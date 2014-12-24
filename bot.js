@@ -16,6 +16,9 @@ var ircServer = config.server,
     helpers = config.helpers,
     startTime = Date.now(),
     endTime = startTime,
+    testDayTopic = "",
+    qaTopic = "",
+    qaChannel = config.channels[0],
     lastQuit = {},
     metrics = {
       greetedName: [],
@@ -53,14 +56,22 @@ function checkTestDay() {
   if (testDay){
     if (Date.now() > endTime){
       testDay = false;
+      client.send('TOPIC', qaChannel, qaTopic);
     }
   } else {
     if ((Date.now() < endTime) && (Date.now() > startTime)){
       testDay = true;
       resetData();
+      client.send('TOPIC', qaChannel, testDayTopic);
     }
   }
 }
+
+client.addListener('topic', function (channel, topic, nick) {
+  if (!testDay && (channel === qaChannel)){
+    qaTopic = topic; // save a non-Test Day topic to restore after Test Day
+  }
+});
 
 client.addListener('join', function(channel, who){
   checkTestDay();
@@ -184,11 +195,11 @@ client.addListener('pm', function(from, message){ // private messages to bot
         endTime = new Date(args.slice(0, args.indexOf(" ")));
         args = args.slice(args.indexOf(" ") + 1);
         etherpad = args.slice(0, args.indexOf(" "));
-        topic = args.slice(args.indexOf(" ") + 1);
+        testDayTopic = args.slice(args.indexOf(" ") + 1);
         client.say(from, "Next test day's start is " + startTime);
         client.say(from, "Next test day's end is " + endTime);
         client.say(from, "Next test day's etherpad is " + etherpad);
-        client.say(from, "Next test day's topic is " + topic);
+        client.say(from, "Next test day's topic is " + testDayTopic);
       } else {
         client.say(from, "sorry! you're not a Test Day admin.");
       }
